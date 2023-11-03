@@ -6,6 +6,7 @@ interface IUser extends Document {
   profitLoss: string;
   description: string;
   totalMoney: string;
+  imageLink:string;
   createdAt: Date;
   // Define other properties here
 }
@@ -30,6 +31,9 @@ const userSchema = new mongoose.Schema<IUser>({
   totalMoney: {
     type: String,
     required: true,
+  },
+  imageLink:{
+    type:String,
   },
   createdAt: {
     type: Date,

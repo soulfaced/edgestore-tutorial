@@ -6,21 +6,31 @@ import {
   MultiFileDropzone,
   type FileState,
 } from "@/components/multi-file-dropzone";
+import { SingleImageDropzone } from "@/components/single-image-dropzone";
 import { useEdgeStore } from "@/lib/edgestore";
+import Link from "next/link";
 import { useState } from "react";
 
 export default function Page() {
   const [fileStates, setFileStates] = useState<FileState[]>([]);
-  const [urls, setUrls] = useState<string[]>([]);
+  // const [urls, setUrls] = useState<string[]>([]);
   // const [isSubmitted, setIsSubmitted] = useState(false);
   const [isCancelled, setIsCancelled] = useState(false);
   const { edgestore } = useEdgeStore();
+  const [file, setFile] = useState<File>();
+  const [progress, setProgress] = useState(0);
+  const [urls, setUrls] = useState<{
+    url: string;
+    thumbnailUrl: string | null;
+  }>();
+  // const { edgestore } = useEdgeStore();
   const [formData, setFormData] = useState({
     teamName: "",
     password: "",
     profitLoss: "",
     description: "",
     totalMoney: "",
+    imageLink:"",
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -32,6 +42,7 @@ export default function Page() {
     profitLoss: "",
     description: "",
     totalMoney: "",
+    imageLink:"",
   });
 
   const handleChange = (e: { target: { name: any; value: any; }; }) => {
@@ -54,6 +65,7 @@ export default function Page() {
     profitLoss: "",
     description: "",
     totalMoney: "",
+    imageLink:"",
     });
 
     try {
@@ -80,14 +92,11 @@ export default function Page() {
       } else {
         console.error("Registration failed:", response.statusText);
       }
-      for (const url of urls) {
-        await edgestore.myPublicImages.upload({
-          url,
-          input: {
-            type: "post",  // Specify the type as "post" or "profile"
-          },
-        });
-      }
+      // await edgestore.myPublicImages.upload({  // Use myPublicImages here
+      //   file,
+      // });
+
+      
     } catch (error) {
       console.error("Error during registration:", error);
     } finally {
@@ -118,41 +127,58 @@ export default function Page() {
   return (
     <div className="flex flex-row items-center m-6">
       <div className="flex gap-4">
-        <MultiFileDropzone
-          value={fileStates}
-          onChange={(files) => {
-            setFileStates(files);
-          }}
-          onFilesAdded={async (addedFiles) => {
-            setFileStates([...fileStates, ...addedFiles]);
-            await Promise.all(
-              addedFiles.map(async (addedFileState) => {
-                try {
-                  const res = await edgestore.myProtectedFiles.upload({
-                    file: addedFileState.file,
-                    options: {
-                      temporary: true,
-                    },
-                    onProgressChange: async (progress) => {
-                      updateFileProgress(addedFileState.key, progress);
-                      if (progress === 100) {
-                        // wait 1 second to set it to complete
-                        // so that the user can see the progress bar at 100%
-                        await new Promise((resolve) =>
-                          setTimeout(resolve, 1000)
-                        );
-                        updateFileProgress(addedFileState.key, "COMPLETE");
-                      }
-                    },
-                  });
-                  setUrls((prev) => [...prev, res.url]);
-                } catch (err) {
-                  updateFileProgress(addedFileState.key, "ERROR");
-                }
-              })
-            );
+      <SingleImageDropzone
+        width={200}
+        height={200}
+        value={file}
+        dropzoneOptions={{
+          maxSize: 1024 * 1024 * 1, // 1MB
+        }}
+        onChange={(file) => {
+          setFile(file);
+        }}
+      />
+      <div className="h-[6px] w-44 border rounded overflow-hidden">
+        <div
+          className="h-full bg-white transition-all duration-150"
+          style={{
+            width: `${progress}%`,
           }}
         />
+      </div>
+      <button
+        className="bg-white text-black rounded px-2 hover:opacity-80"
+        onClick={async () => {
+          if (file) {
+            const res = await edgestore.myPublicImages.upload({
+              file,
+              input: { type: "post" },
+              onProgressChange: (progress) => {
+                setProgress(progress);
+              },
+            });
+            // save your data here
+            setUrls({
+              url: res.url,
+              thumbnailUrl: res.thumbnailUrl,
+            });
+            setFormData({
+              ...formData,
+              imageLink: res.url,
+            });
+          }
+        }}
+      >upload image</button>
+      {urls?.url && (
+        <Link href={urls.url} target="_blank">
+          URL
+        </Link>
+      )}
+      {urls?.thumbnailUrl && (
+        <Link href={urls.thumbnailUrl} target="_blank">
+          THUMBNAIL
+        </Link>
+      )}
         {/* Just a dummy form for demo purposes */}
         <div className="flex flex-col gap-2">
           <div>
@@ -289,7 +315,8 @@ export default function Page() {
                         isLoading ? "opacity-50 cursor-not-allowed" : ""
                       }`}
                       type="submit"
-                      disabled={isLoading}
+                      disabled={isLoading||progress!=100}
+                      // disabled={}
                       onClick={handleSubmit}
                     >
                       {isLoading ? (
@@ -317,7 +344,7 @@ export default function Page() {
                           Loading...
                         </>
                       ) : (
-                        "Register"
+                        (progress!=100)?("upload image first"):("submit")
                       )}
                     </button>
                   </form>
@@ -326,20 +353,8 @@ export default function Page() {
             )}
           </div>
           <div className="flex justify-end mt-2 gap-2">
-            <button
-              className="bg-white text-black rounded px-3 py-1 hover:opacity-80"
-              onClick={async () => {
-                for (const url of urls) {
-                  await edgestore.myPublicImages.upload({
-                    url,
-                    input: { type: "post" }
-                  });
-                }
-                setIsSubmitted(true);
-              }}
-            >
-              Submit
-            </button>
+            
+            
           </div>
         </div>
       </div>
