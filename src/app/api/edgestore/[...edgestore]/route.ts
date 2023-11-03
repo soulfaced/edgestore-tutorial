@@ -1,3 +1,5 @@
+
+
 import { initEdgeStore } from "@edgestore/server";
 import {
   CreateContextOptions,
@@ -58,3 +60,4 @@ const handler = createEdgeStoreNextHandler({
 export { handler as GET, handler as POST };
 
 export type EdgeStoreRouter = typeof edgeStoreRouter;
+
